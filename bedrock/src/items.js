@@ -76,8 +76,22 @@ module.exports = async (version, outputPath) => {
     r.displayName ??= titleCase(r.name.replace('item.', '').replace(/_/g, ' '))
   }
 
+  // remove duplicates
+  for(const item of ret){
+    if(item.enchantCategories?.length){
+      const uniques = [];
+      for(const enchCat of item.enchantCategories){
+        if(!uniques.includes(enchCat)){
+          uniques.push(enchCat);
+        }
+      }
+      item.enchantCategories = uniques;
+    }
+  }
+
   console.log(ret)
   fs.writeFileSync(outputPath + '/items.json', JSON.stringify(ret, null, 2))
+  fs.writeFileSync(outputPath + '/minecraft-data/items.json', JSON.stringify(ret, null, 2))
 }
 
 if (!module.parent) module.exports(null, process.argv[2] || './output')
