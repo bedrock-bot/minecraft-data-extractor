@@ -62,6 +62,7 @@ module.exports = (version, outputPath) => {
   ret = ret.sort((a,b) => a.id - b.id)
 
   fs.writeFileSync(outputPath + '/biomes.json', JSON.stringify(ret, null, 2))
+  fs.writeFileSync(outputPath + '/minecraft-data/biomes.json', JSON.stringify(ret, null, 2))
 }
 
 if (!module.parent) module.exports(null, process.argv[2] || './1.17.10')
