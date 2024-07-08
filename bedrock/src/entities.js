@@ -151,6 +151,7 @@ module.exports = (version, outputPath) => {
   }
 
   const mobs = {}
+  const minecraft_data_mobs = []
   let ix = 0
   for (const line of s.split(/\n/g)) {
     if (line.endsWith(',') || line.endsWith(';')) {
@@ -161,10 +162,36 @@ module.exports = (version, outputPath) => {
       id = id.toLowerCase()
       if (identifier) identifier = JSON.parse(identifier)
       
-      mobs[id] = { ...javaMap[id], id: ix++, internalId: parseInt(type), name: strip(identifier) ?? id, height: parseFloat(height),  width: parseFloat(width), length: parseFloat(length), offset: parseFloat(offset) }
+      let obj = { 
+        ...javaMap[id], id: ix++, 
+        internalId: parseInt(type), 
+        name: strip(identifier) ?? id, 
+        height: parseFloat(height),  
+        width: parseFloat(width), 
+        length: parseFloat(length), 
+        offset: parseFloat(offset) 
+      };
+
+      mobs[id] = obj;
+
+
+      minecraft_data_mobs.push({
+        id: obj.id,
+        internalId: obj.internalId,
+        name: obj.name,
+        displayName: obj.displayName ?? obj.name,
+        height: obj.height,
+        width: obj.width,
+        length: obj.length,
+        offset: obj.offset,
+        type: obj.type ?? '',
+        category: obj.category,
+      })
+
     }
   }
 
   fs.writeFileSync(outputPath + '/entities.json', JSON.stringify(mobs, null, 2))
+  fs.writeFileSync(outputPath + '/minecraft-data/entities.json', JSON.stringify(minecraft_data_mobs, null, 2))
 }
 if (!module.parent) module.exports(null, 'output')
