@@ -18,17 +18,31 @@ class BlockMapper {
   }
 
   buildJ2B(geyserMappingDir) {
-    var map = {}
-    var blocksJson = require(geyserMappingDir)
-
-    for (var key in blocksJson) {
-      let val = blocksJson[key]
-      // map[key] = { bid: val.bedrock_identifier, bstates: val.bedrock_states }
-      let bkey = val.bedrock_identifier + '[' + this._concatStatesJ2B(val.bedrock_states) + ']'
-      key += key.includes('[') ? '' : '[]'
-      map[key] ??= bkey
+    if(fs.existsSync(geyserMappingDir)){
+      var j2b = {}
+      var blocksJson = require(geyserMappingDir)
+  
+      for (var key in blocksJson.mappings) {
+        let val = blocksJson.mappings[key]
+        // map[key] = { bid: val.bedrock_identifier, bstates: val.bedrock_states }
+        let bedrockKey = 'minecraft:' + val.bedrock_state.bedrock_identifier + '[' + this._concatStatesJ2B(val.bedrock_state.state) + ']'
+        let javaKey = val.java_state.Name + '[' + this._concatStatesJ2B(val.java_state.Properties, true) + ']';
+        j2b[javaKey] ??= bedrockKey
+      }
+      this.j2b = j2b
+    }else{
+      // 1.21.0+
+      var j2b = {}
+      var blocksJson = require('./mappings-generator/generator_blocks.json')
+  
+      for (var key in blocksJson.mappings) {
+        let val = blocksJson.mappings[key]
+        let bedrockKey = 'minecraft:' + val.bedrock_state.bedrock_identifier + '[' + this._concatStatesJ2B(val.bedrock_state.state) + ']'
+        let javaKey = val.java_state.Name + '[' + this._concatStatesJ2B(val.java_state.Properties, true) + ']';
+        j2b[javaKey] ??= bedrockKey
+      }
+      this.j2b = j2b
     }
-    this.j2b = map
   }
 
   jss2bss(val) {
@@ -51,14 +65,16 @@ class BlockMapper {
     this.j2brid = out
   }
 
-  _concatStatesJ2B(states) {
+  _concatStatesJ2B(states, skipReplace) {
     let str = ''
     if (!states) return str
 
     for (var key of Object.keys(states).sort()) {
       let val = states[key]
-      if (val == 'true') val = 1
-      if (val == 'false') val = 0
+      if (!skipReplace){
+        if (val == 'true') val = 1
+        if (val == 'false') val = 0
+      }
       str += key + '=' + val + ','
     }
     return str.endsWith(',') ? str.slice(0, -1) : str
@@ -90,7 +106,7 @@ class BlockMapper {
       let e = data[i]
       // console.log(e)
       let fname = ''
-      let name = e.name
+      let name = 'minecraft:'+ e.name
       let states = ''
       for (var stateId in e.states) {
         let stateVal = e.states[stateId].value
@@ -150,6 +166,12 @@ class BlockMapper {
   async build(od) {
     assert(od)
     console.log('writing to', od)
+
+    
+    try {
+      fs.mkdirSync(od + '/minecraft-data', { recursive: true })
+    } catch (e) { console.log(e) }
+
     try {
       fs.mkdirSync(od + '/blocks', { recursive: true })
     } catch (e) { console.log(e) }
@@ -157,11 +179,13 @@ class BlockMapper {
     // Copy over blockstates
     const states = await this.getBlockStatesGeyser()
     fs.writeFileSync(od + '/blocks/BlockStates.json', JSON.stringify(states, null, '\t'))
+    fs.writeFileSync(od + '/minecraft-data/blockStates.json', JSON.stringify(states, null, '\t'))
 
     // * Build Java BSS to Bedrock BSS map
     {
       this.buildJ2B(d`./mappings/blocks.json`) // Geyser mappings
       fs.writeFileSync(od + '/blocks/Java2Bedrock.json', JSON.stringify(this.j2b, null, 2))
+      fs.writeFileSync(od + '/minecraft-data/blocksJ2B.json', JSON.stringify(this.j2b, null, 2))
       // console.log('j2b', this.j2b)
     }
 
@@ -169,6 +193,7 @@ class BlockMapper {
     {
       this.buildB2J()
       fs.writeFileSync(od + '/blocks/Bedrock2Java.json', JSON.stringify(this.b2j, null, 2))
+      fs.writeFileSync(od + '/minecraft-data/blocksB2J.json', JSON.stringify(this.b2j, null, 2))
       // console.log(this.b2j)
     }
 
