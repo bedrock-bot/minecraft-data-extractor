@@ -118,10 +118,9 @@ module.exports = async (version, outputPath) => {
 }
 
 async function createCollosionDataV2(version, outputPath){
-  const collisionBlockStates =fs.readFileSync('./collision_block_state_names.txt', {encoding: 'utf-8'}).split('\r\n');
-  const blocksJ2B = require('./output/blocks/Java2Bedrock.json');
   const BSS = require('./output/blocks/BSS.json')
   const blocksJSON = require('./output/blocks.json')
+  const Java2Bedrock = require('./output/blocks/Java2Bedrock.json')
 
   const collisionsData =fs.readFileSync(`./deps/mappings/collisions.nbt`);
   const collisionsNbt = await nbt.parse(collisionsData);
@@ -133,27 +132,14 @@ async function createCollosionDataV2(version, outputPath){
   }
 
   const bedrockBlockStateId_2_collisionIndex = {};
-
-  for(const bedrockBlockIndex in collisionBlockStates){
-    let name = collisionBlockStates[bedrockBlockIndex];
-
-    if(!collisions.blocks[strip(name)]){
-      const key = name + (name.includes('[') ? '' : '[]');
-      const bedrockStateName = blocksJ2B[key];
-
-      if(bedrockStateName == null){
-        throw new Error('not found bedrock block state name')
-      }
-      const index = BSS[jss2bss(bedrockStateName)]
-
-      if(index == null){
-        throw new Error('not found bedrock block state id')
-      }
-
-      bedrockBlockStateId_2_collisionIndex[index]= bedrockBlockIndex;
-    }else{
-      throw new Error('unhandled case.')
+  const bedrock_block_states = Object.values(Java2Bedrock);
+  for(const bedrockBlockIndex in bedrock_block_states){
+    const bedrockStateName = bedrock_block_states[bedrockBlockIndex];
+    const index = BSS[jss2bss(bedrockStateName)]
+    if(index == null){
+      throw new Error('not found bedrock block state id')
     }
+    bedrockBlockStateId_2_collisionIndex[index]= bedrockBlockIndex;
   }
 
   for(const bedrockBlockIndex in blocksJSON){
