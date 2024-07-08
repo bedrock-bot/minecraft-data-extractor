@@ -19,7 +19,10 @@ function updateSubmodules() {
 
   for (const dep of ['BedrockData', 'mappings', 'PyMCTranslate', 'PyMCTCompiler', 'mappings-generator']) {
     const e = fs.readFileSync(join(__dirname, 'deps', dep, 'log.txt'), 'utf-8')
-    const [ _, where ] = e.split('\n')[0].match(/....... \((.*)\)/)
+    let [ _, where ] = e.split('\n')[0].match(/....... \((.*)\)/)
+    if(where.includes(')')){
+      where = where.substring(0, where.indexOf(')'));
+    }
     const br = where.split(', ')
     // if (br.includes('origin/HEAD')) continue // no need to switch
     const latestBranch = br[br.length - 1].replace('origin/', '')
