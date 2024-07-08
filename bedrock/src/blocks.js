@@ -91,7 +91,8 @@ module.exports = async (version, outputPath) => {
     usedIds.add(entry.id)
   }
 
-  fs.writeFileSync(outputPath + '/blocks.json', stringify(fin, { indent: 2, maxLength: 200 }))
+  fs.writeFileSync(outputPath + '/blocks.json', stringify(fin, { indent: 2, maxLength: 200 }));
+  fs.writeFileSync(outputPath + '/minecraft-data/blocks.json', stringify(fin, { indent: 2, maxLength: 200 }));
 }
 
 if (!module.parent) module.exports(null, '1.17.10')
