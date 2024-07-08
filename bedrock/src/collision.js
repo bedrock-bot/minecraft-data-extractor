@@ -1,4 +1,5 @@
 const fs = require('fs')
+const nbt = require('prismarine-nbt')
 const stringify = require("json-stringify-pretty-compact")
 const assert = require('assert')
 const strip = k => k.replace('minecraft:', '').split('[')[0]
@@ -13,7 +14,10 @@ const sequential = data => {
   return true
 }
 
-module.exports = (version, outputPath) => {
+module.exports = async (version, outputPath) => {
+  if(fs.existsSync('./deps/mappings/collisions.nbt')){
+    return await createCollosionDataV2(version, outputPath);
+  }
 
   const geyserMappings = require('./deps/mappings/blocks.json')
   const collisions = require('./deps/mappings/collision.json')
@@ -112,5 +116,75 @@ module.exports = (version, outputPath) => {
 
   // console.log(out)
 }
+
+async function createCollosionDataV2(version, outputPath){
+  const collisionBlockStates =fs.readFileSync('./collision_block_state_names.txt', {encoding: 'utf-8'}).split('\r\n');
+  const blocksJ2B = require('./output/blocks/Java2Bedrock.json');
+  const BSS = require('./output/blocks/BSS.json')
+  const blocksJSON = require('./output/blocks.json')
+
+  const collisionsData =fs.readFileSync(`./deps/mappings/collisions.nbt`);
+  const collisionsNbt = await nbt.parse(collisionsData);
+  const collisionsJSON = nbt.simplify(collisionsNbt.parsed);
+
+  const collisions = {
+    blocks: {}, 
+    shapes: {}
+  }
+
+  const bedrockBlockStateId_2_collisionIndex = {};
+
+  for(const bedrockBlockIndex in collisionBlockStates){
+    let name = collisionBlockStates[bedrockBlockIndex];
+
+    if(!collisions.blocks[strip(name)]){
+      const key = name + (name.includes('[') ? '' : '[]');
+      const bedrockStateName = blocksJ2B[key];
+
+      if(bedrockStateName == null){
+        throw new Error('not found bedrock block state name')
+      }
+      const index = BSS[jss2bss(bedrockStateName)]
+
+      if(index == null){
+        throw new Error('not found bedrock block state id')
+      }
+
+      bedrockBlockStateId_2_collisionIndex[index]= bedrockBlockIndex;
+    }else{
+      throw new Error('unhandled case.')
+    }
+  }
+
+  for(const bedrockBlockIndex in blocksJSON){
+    let bedrockBlock = blocksJSON[bedrockBlockIndex];
+     for(let stateId = bedrockBlock.minStateId; stateId <= bedrockBlock.maxStateId; stateId++){
+      if(!collisions.blocks[strip(bedrockBlock.name)]){
+          collisions.blocks[strip(bedrockBlock.name)] = []
+      }
+
+      if(bedrockBlockStateId_2_collisionIndex[stateId] != undefined){
+        collisions.blocks[strip(bedrockBlock.name)].push(collisionsJSON.indices[bedrockBlockStateId_2_collisionIndex[stateId]]);
+      }else{
+        collisions.blocks[strip(bedrockBlock.name)].push(0);
+      }       
+    }
+  }
+  
+  for (const key in collisionsJSON.collisions) {
+    const value = collisionsJSON.collisions[key]  
+    collisions.shapes[key] = value;
+  }
+  
+  fs.writeFileSync(outputPath + '/blockCollisionShapes.json', stringify(collisions, { indent: '\t', maxLength: 19999 })) 
+  fs.writeFileSync(outputPath + '/minecraft-data/blockCollisionShapes.json', stringify(collisions, { indent: '\t', maxLength: 19999 })) 
+}
+
+function jss2bss(val) {
+  val = val.replace(/=true/g, '=1')
+  val = val.replace(/=false/g, '=0')
+  return val
+}
+
 
 if (!module.parent) module.exports(null, '1.17.10')
