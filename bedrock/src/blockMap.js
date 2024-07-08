@@ -33,7 +33,7 @@ class BlockMapper {
     }else{
       // 1.21.0+
       var j2b = {}
-      var blocksJson = require('./mappings-generator/generator_blocks.json')
+      var blocksJson = require('./deps/mappings-generator/generator_blocks.json')
   
       for (var key in blocksJson.mappings) {
         let val = blocksJson.mappings[key]
